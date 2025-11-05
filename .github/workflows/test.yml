@@ -157,6 +157,7 @@ jobs:
     - name: Install the package and its dependents
       env:
         RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+        PIP_CONSTRAINTS: ansible-constraints.txt
       run: |
         make install
     - name: Show installed package versions
