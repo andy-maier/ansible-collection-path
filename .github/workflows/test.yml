@@ -178,11 +178,11 @@ jobs:
         RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
       run: |
         make build
-    - name: Run check
+    - name: Run flake8
       env:
         RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
       run: |
-        make check
+        make flake8
     - name: Run ruff
       env:
         RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
