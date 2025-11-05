@@ -1,0 +1,19 @@
+# ------------------------------------------------------------------------------
+# Pip constraints file to test with different Ansible versions
+#
+
+
+# ansible 6 (ansible-core 2.13) requires Python >=3.8 and its sanity test supports Python 3.8 to 3.10.
+# ansible 7 (ansible-core 2.14) requires Python >=3.8 and its sanity test supports Python 3.8 to 3.10.
+# ansible 8 (ansible-core 2.15) requires Python >=3.9 and its sanity test supports Python 3.9 to 3.11.
+# ansible 9 (ansible-core 2.16) requires Python >=3.10 and its sanity test supports Python 3.10 to 3.12.
+# ansible 10 (ansible-core 2.17) requires Python >=3.10 and its sanity test supports Python 3.10 to 3.12.
+# ansible 11 (ansible-core 2.18) requires Python >=3.11 and its sanity test supports Python 3.11 to 3.13.
+# ansible 12 (ansible-core 2.19) requires Python >=3.11 and its sanity test supports Python 3.11 to 3.13.
+ansible==6.0.0; python_version == '3.8'
+ansible==7.0.0; python_version == '3.9'
+ansible==8.0.0; python_version == '3.10'
+ansible==9.0.1; python_version == '3.11'
+ansible==10.0.1; python_version == '3.12'
+ansible==11.0.0; python_version == '3.13'
+ansible==12.0.0; python_version == '3.14'  # We don't run the sanity test

@@ -1,0 +1,40 @@
+# ------------------------------------------------------------------------------
+# Pip requirements file for packages needed for development.
+
+
+# ------------------------------------------------------------------------------
+# Direct and necessary indirect dependencies for development.
+
+# PEP517 package builder, used in Makefile
+build>=1.0.0
+# build requires virtualenv.cli_run which was added in virtualenv 20.1
+virtualenv>=20.26.6
+pyproject-hooks>=1.1.0
+
+# Bandit checker
+bandit>=1.7.8
+# PyYAML is used by bandit and is covered in requirements.txt
+
+# Flake8 and dependents (no imports, invoked via flake8 script):
+flake8>=6.1.0
+mccabe>=0.7.0
+pycodestyle>=2.11.0
+pyflakes>=3.1.0
+entrypoints>=0.3.0
+
+# Ruff checker (no imports, invoked via ruff script):
+ruff>=0.3.5
+
+# PyLint (no imports, invoked via pylint script)
+pylint>=3.0.1; python_version == '3.8'
+pylint>=3.3.1; python_version >= '3.9'
+astroid>=3.0.1; python_version == '3.8'
+astroid>=3.3.7; python_version >= '3.9'
+lazy-object-proxy>=1.4.3
+wrapt>=1.15
+# platformdirs is also used by tox
+platformdirs>=4.1.0
+# isort 4.3.8 fixes an issue with py310 and works on py310 (Note that isort 5.10.0 has official support for py310)
+isort>=4.3.8
+tomlkit>=0.10.1
+dill>=0.3.7

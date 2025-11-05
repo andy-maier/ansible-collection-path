@@ -1,0 +1,208 @@
+# This GitHub workflow will setup and run various kinds of tests with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: test
+
+on:
+  schedule:
+    # The schedule event always (and only) runs on the main branch.
+    - # cron (in UTC): minute hour day_of_month month day_of_week
+      cron: '00 22 * * SAT'
+  pull_request:  # When creating a PR targeting these branches
+    branches:
+    - main
+    - stable_*
+  push:  # When merging a PR targeting these branches (direct push is disabled)
+    branches:
+    - main
+    - stable_*
+
+jobs:
+
+  set_matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select_matrix.outputs.matrix }}
+    steps:
+    - name: "Select matrix"
+      id: select_matrix
+      # Select full matrix when scheduled or when releasing, and normal matrix
+      # otherwise. The matrix is defined as a JSON string.
+      # This technique documented in:
+      #    https://stackoverflow.com/questions/65384420/how-to-make-a-github-action-matrix-element-conditional
+      # TODO: Find a way to define this with less escapes.
+      run: |
+        if [[ "${{ github.event_name }}" == "schedule" || "${{ github.head_ref }}" =~ ^release_ ]]; then \
+          echo "matrix={ \
+            \"os\": [ \"ubuntu-latest\", \"macos-latest\", \"windows-latest\" ], \
+            \"python-version\": [ \"3.8\", \"3.9\", \"3.10\", \"3.11\", \"3.12\", \"3.13\", \"3.14\" ], \
+            \"exclude\": [ \
+              { \
+                \"os\": \"ubuntu-latest\", \
+                \"python-version\": \"3.8\", \
+              } \
+            ], \
+            \"include\": [ \
+              { \
+                \"os\": \"ubuntu-22.04\", \
+                \"python-version\": \"3.8\", \
+              } \
+            ] \
+          }" >> $GITHUB_OUTPUT; \
+        else \
+          echo "matrix={ \
+            \"os\": [ \"ubuntu-latest\" ], \
+            \"python-version\": [ \"3.14\" ], \
+            \"include\": [ \
+              { \
+                \"os\": \"ubuntu-22.04\", \
+                \"python-version\": \"3.8\", \
+              }, \
+              { \
+                \"os\": \"ubuntu-latest\", \
+                \"python-version\": \"3.9\", \
+              }, \
+              { \
+                \"os\": \"macos-latest\", \
+                \"python-version\": \"3.8\", \
+              }, \
+              { \
+                \"os\": \"macos-latest\", \
+                \"python-version\": \"3.14\", \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.8\", \
+              }, \
+              { \
+                \"os\": \"windows-latest\", \
+                \"python-version\": \"3.14\", \
+              } \
+            ] \
+          }" >> $GITHUB_OUTPUT; \
+        fi
+    - name: Show matrix in JSON
+      run: echo '${{ steps.select_matrix.outputs.matrix }}'
+
+  test:
+    needs: set_matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJson(needs.set_matrix.outputs.matrix) }}
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: 1
+    steps:
+    - name: Set run type (normal, scheduled, release)
+      id: set-run-type
+      uses: actions/github-script@v8
+      with:
+        result-encoding: string
+        script: |
+          var result
+          if ("${{ github.event_name }}" == "schedule") {
+            result = "scheduled"
+          } else if ("${{ github.head_ref }}".match(/^release_/)) {
+            result = "release"
+          } else {
+            result = "normal"
+          }
+          console.log(result)
+          return result
+    - name: Checkout repo
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+    - name: Check commit messages - Signed-off-by
+      if: github.event_name != 'schedule'
+      uses: gsactions/commit-message-checker@v2
+      with:
+        pattern: '^Signed-off-by: [^<>]+ <[^<>]+>$'
+        flags: 'gm'
+        excludeDescription: true
+        excludeTitle: true
+        checkAllCommitMessages: true
+        accessToken: ${{ secrets.GITHUB_TOKEN }}
+        error: Commit message has no or incorrectly formatted signed-off-by line
+    - name: Check commit messages - Line length
+      if: github.event_name != 'schedule'
+      uses: gsactions/commit-message-checker@v2
+      with:
+        pattern: '^.{1,80}\n\n(.{0,80}\n)*.{0,80}$'
+        flags: ''
+        excludeDescription: true
+        excludeTitle: true
+        checkAllCommitMessages: true
+        accessToken: ${{ secrets.GITHUB_TOKEN }}
+        error: Commit message title or body exceeds maximum line length of 80
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Display environment
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make env
+    - name: Display initial Python packages
+      run: |
+        echo "Installed Python packages:"
+        pip list
+    - name: Display platform
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make platform
+    - name: Install the package and its dependents
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make install
+    - name: Show installed package versions
+      run: |
+        echo "Installed Python packages:"
+        pip list
+    - name: Development setup
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+        PIP_CONSTRAINTS: ansible-constraints.txt
+      run: |
+        make develop
+    - name: Show installed package versions
+      run: |
+        echo "Installed Python packages:"
+        pip list
+    - name: Run build
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make build
+    - name: Run check
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make check
+    - name: Run ruff
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make ruff
+    - name: Run pylint
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make pylint
+    - name: Run bandit
+      env:
+        RUN_TYPE: ${{ steps.set-run-type.outputs.result }}
+      run: |
+        make bandit
+
+  test_finish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dummy step to define required tests in GitHub
+      run: |
+        echo Dummy step to define required tests in GitHub
